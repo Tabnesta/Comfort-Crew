@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Home, Users, MessageSquare, Settings, Bell, Sparkles } from 'lucide-react';
 import { useStore, useUnreadCheckIns } from '../store/useStore';
@@ -195,5 +196,3 @@ export function WelcomeScreen({ onComplete }: { onComplete: (name: string) => vo
     </motion.div>
   );
 }
-
-import { useState } from 'react';
