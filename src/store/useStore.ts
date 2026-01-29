@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 import type { AppState, Message, Conversation, UserProfile, DailyCheckIn, FriendId, MoodType } from '../types';
 import { friends } from '../data/friends';
 
@@ -186,7 +187,7 @@ export const useStore = create<AppState>()(
   )
 );
 
-// Helper hooks
+// Helper hooks - use useShallow to prevent infinite loops with derived state
 export const useConversation = (conversationId: string | null) => {
   return useStore(state =>
     conversationId ? state.conversations[conversationId] : null
@@ -200,10 +201,22 @@ export const useActiveConversation = () => {
 };
 
 export const useFriendConversations = (friendId: FriendId) => {
-  const conversations = useStore(state => state.conversations);
-  return Object.values(conversations).filter(c => c.friendId === friendId);
+  return useStore(
+    useShallow(state => Object.values(state.conversations).filter(c => c.friendId === friendId))
+  );
 };
 
 export const useUnreadCheckIns = () => {
-  return useStore(state => state.dailyCheckIns.filter(c => !c.read));
+  return useStore(
+    useShallow(state => state.dailyCheckIns.filter(c => !c.read))
+  );
+};
+
+// Simple selectors that don't need shallow comparison
+export const useDailyCheckIns = () => {
+  return useStore(state => state.dailyCheckIns);
+};
+
+export const useUser = () => {
+  return useStore(state => state.user);
 };
