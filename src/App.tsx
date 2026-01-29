@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Header,
@@ -16,7 +17,56 @@ import {
 import { useStore } from './store/useStore';
 import type { FriendId, UserProfile } from './types';
 
-function App() {
+// Error Boundary Component to catch crashes
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('App Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 max-w-md text-center">
+            <div className="text-6xl mb-4">😅</div>
+            <h2 className="text-2xl font-bold text-white mb-2">Oops! Something went wrong</h2>
+            <p className="text-white/60 mb-6">
+              Don't worry, we can fix this by clearing the app data.
+            </p>
+            <button
+              onClick={() => {
+                localStorage.removeItem('comfort-crew-storage');
+                window.location.reload();
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full font-semibold hover:opacity-90 transition-opacity"
+            >
+              Reset App & Reload
+            </button>
+            <p className="text-white/40 text-sm mt-4">
+              Error: {this.state.error?.message}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function AppContent() {
   const {
     user,
     setUser,
@@ -46,14 +96,30 @@ function App() {
   // Generate daily check-ins periodically
   useEffect(() => {
     if (user) {
-      // Generate check-ins on first load
-      generateCheckIns();
+      // Small delay to ensure state is ready
+      const timeout = setTimeout(() => {
+        try {
+          generateCheckIns();
+        } catch (e) {
+          console.error('Error generating check-ins:', e);
+        }
+      }, 500);
 
       // And periodically (every 30 minutes for demo purposes)
-      const interval = setInterval(generateCheckIns, 30 * 60 * 1000);
-      return () => clearInterval(interval);
+      const interval = setInterval(() => {
+        try {
+          generateCheckIns();
+        } catch (e) {
+          console.error('Error generating check-ins:', e);
+        }
+      }, 30 * 60 * 1000);
+
+      return () => {
+        clearTimeout(timeout);
+        clearInterval(interval);
+      };
     }
-  }, [user]);
+  }, [user?.name]); // Only depend on user.name to avoid unnecessary reruns
 
   // Handle opening chat with a friend
   const handleOpenChat = (friendId: FriendId) => {
@@ -173,6 +239,14 @@ function App() {
         }}
       />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
   );
 }
 
